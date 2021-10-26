@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Haskell Ideas in Modern Programming</title>
+    <meta charset="utf-8">
+    <style>
+      /* @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+      @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+      @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic); */
+      @import url(css/metropolis.css);
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+class: center, middle, title-slide
+count: false
+
+# Haskell Ideas in <br /> Modern Programming
+## Alejandro Serrano @ INFOFP 2021
+
+.less-line-height[
+.grey[🐦 @trupill - 👨‍💻 47 Degrees (Academy)]
+]
+
+---
+
+# Summary
+
+```
+             Your knowledge of C#
+      + Your knowledge of Haskell
+---------------------------------
+Ready for mainstream programming!
+```
+
+---
+
+# Introduction
+
+```
+             Your knowledge of C#
+      + Your knowledge of Haskell
+---------------------------------
+Ready for mainstream programming!
+```
+
+Last decade has been a good one for programing languages
+
+- Java or C# were stuck in 2000s
+- Now we have Scala, Kotlin, Swift, Elixir!
+- And Java and C# are catching up
+
+---
+
+# Introduction
+
+```
+             Your knowledge of C#
+      + Your knowledge of Haskell
+---------------------------------
+Ready for mainstream programming!
+```
+
+> Most of these ideas come from FP
+
+INFOFP is (now) really relevant
+
+> Let's see some of those ideas in action!
+
+---
+
+# 👨‍💻 About me
+
+.margin-top[
+- Bachelor in CS + Math in Madrid
+- PhD at UU in the "FP group"
+- Lecturer at UU for a few years
+    - I used to teach INFOFP
+- Moved to industry 47 Degrees
+    - Learnt Scala and Kotlin
+    - Still doing compiler stuff
+    - `arrow-kt.io`
+]
+
+---
+
+class: center, middle, title-slide
+
+# 🧱 FP and Data Modelling
+
+---
+
+# OOP vs. FP data
+
+## OOP bundles data and behavior
+
+The behavior usually involves _mutation_
+
+.code70[
+```kotlin
+// This is written in Kotlin
+class Person {
+  var name: String  // var = mutable
+  var age: Int
+
+  fun happyBirthday() {
+    age = age + 1
+  }
+}
+```
+]
+
+---
+
+# OOP vs. FP data
+
+## FP separates data and behavior
+
+There's a focus on _immutability_
+
+.code70[
+```kotlin
+// data Person = 
+//   Person { name :: String, age :: Int }
+data class Person(val name: String, val age: Int)
+
+fun Person.happyBirthday(): Person =
+  this.copy(age = age + 1)
+```
+]
+
+---
+
+# Big debate over the years
+
+## Performance
+
+Immutability was thought to be _terrible_
+
+- More objects ⟹ more memory mgmt.
+
+---
+
+# Big debate over the years
+
+## Design
+
+Many OOP patterns arise from bundling data and behavior
+
+- Haskell-style `data` was pejoratively called "anemic domain modelling" <br/>
+  `https://martinfowler.com/bliki/AnemicDomainModel.html`
+
+---
+
+# Fast-forward to the present
+
+Any mainstream language provides a way to create **immutable** _records_
+
+.code70[
+```csharp
+// C#
+public record Person(String name, int age);
+```
+
+```java
+// Java
+record Person(String name, int age) { }
+```
+
+```kotlin
+// Kotlin
+data class Person(val name: String, val age: Int)
+```
+]
+
+---
+
+# Fast-forward to the present
+
+.code70[
+```csharp
+// C#
+public record Person(String name, int age);
+```
+]
+
+## What happened?
+
+> Reasoning about and sharing immutable data is easier
+
+.margin-top[
+1. Teams have become larger
+2. Asynchronous programming is now the norm
+    - Have you heard about microservices?
+]
+
+---
+
+# OOP vs. FP "hierarchies"
+
+## OOP promotes open hierarchies
+
+.code70[
+```kotlin
+interface Animal {
+  fun makeSound(): String
+}
+class Dog: Animal {
+  override fun makeSound() = "woof!"
+}
+class Cat: Animal {
+  override fun makeSound() = "meow!"
+}
+// you can add more later and elsewhere
+```
+]
+
+---
+
+# OOP vs. FP "hierarchies"
+
+## FP promotes closed set of cases
+
+.code70[
+```kotlin
+sealed interface User
+data class Person(val name: String, val age: Int)
+                                     : User
+data class Company(val name: String) : User
+```
+
+Compare with the similar declaration in Haskell
+
+```haskell
+data User = Person { name :: String, age :: Int }
+          | Company { name :: String }
+```
+]
+
+---
+
+# FP hierarchies
+
+ADTs encoding in mixed OOP+FP languages as:
+
+- An interface for the "whole" type
+- A set of records representing the cases
+- `sealed` to prevent further extension
+
+## Benefits
+
+.margin-top[
+- Keep the cases in tight control
+- Allow for compiler-checked exhaustiveness...
+]
+
+---
+
+# Pattern matching
+
+Records pave the way to simpler logic
+
+```csharp
+// C#
+shape switch {
+  Rectangle r when r.Height == r.Width
+              => "square",
+  Rectangle _ => "rectangle",
+  _           => "other shape"
+}
+```
+
+---
+
+class: center, middle, title-slide
+
+# ⛓️ Higher-Order Functions
+
+---
+
+# Higher order functions are just there
+
+### .grey[You understand this!]
+
+From the Java documentation
+
+.code70[
+```java
+int sum = 
+  widgets.stream()
+         .filter(w -> w.getColor() == RED)
+         .mapToInt(w -> w.getWeight())
+         .sum();
+```
+]
+
+.font60[
+Reference: <br /> `https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html`
+]
+
+---
+
+# Complicated? Nah!
+
+Things like `flatMap` are still seen as arcane
+
+.code70[
+```kotlin
+inline fun <T, R> Iterable<T>.flatMap(
+  transform: (T) -> Iterable<R>
+): List<R>
+```
+
+But you know them very well!
+
+```haskell
+concatMap :: Iterable t
+          -> (t -> Iterable r)
+          -> List r
+```
+]
+
+---
+
+# Higher-order-only
+
+Libraries provide only higher-order APIs:
+
+- Stream processing
+- Asynchronous programming
+
+Gives authors more room to make it faster
+
+- Parallelization is easier
+- Operations compose better
+
+---
+
+# Higher-order-only
+
+One example is Flow for Kotlin
+
+### .grey[You understand this!]
+
+```kotlin
+val sum = (1..5).asFlow()
+    .map { it * it }
+    .reduce { a, b -> a + b }
+```
+
+This is what you use in modern Android
+
+---
+
+class: center, middle, title-slide
+
+# 🌐 Front-end Web Programming
+# 🗄️ Side Effect Isolation
+# 🧮 Folds
+
+---
+
+# React
+
+**The** library for modern front-end web programming - `reactjs.org`
+
+## Core ideas
+
+.font80[
+1. A web app is components + state / model
+2. Each component is a **pure** function `State -> HTML`
+3. Components raise **events** to change the state
+4. When the state changes the components are re-rendered (the function is called again)
+]
+
+---
+
+# React
+
+**The** library for modern front-end web programming - `reactjs.org`
+
+<img src="images/model-view-update.svg" />
+
+.font50[
+Source: `https://elmprogramming.com/model-view-update-part-1.html`
+]
+
+---
+
+# React example
+
+⚠️ JavaScript is an untyped language!
+
+↪️ Many people use alternatives like TypeScript
+
+```javascript
+function Welcome(props) {
+  return <h1>Hello, {props.name}</h1>;
+}
+```
+
+---
+
+# Purity in React
+
+```javascript
+function Welcome(props) {
+  return <h1>Hello, {props.name}</h1>;
+}
+```
+
+### ☢️ Do not perform side effects!
+
+.margin-top[
+- This model only works if `Welcome` is pure
+- You don't know when it's really called
+    - The framework caches HTML
+]
+
+---
+
+# Purity in React
+
+```javascript
+function Welcome(props) {
+  return <h1>Hello, {props.name}</h1>;
+}
+```
+
+### ☢️ Do not perform side effects!
+
+.margin-top[
+- The language itself won't stop you!
+- 🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛🐛
+]
+
+> Renewed interest in things like `IO`
+
+---
+
+# `IO`-like things
+
+> Renewed interest in things like `IO`
+
+- Cats Effect for Scala
+- `suspend` + Arrow Fx in Kotlin
+
+.code70[
+```scala
+import cats.effect.IO
+
+val ioHello = IO { println("Hello World!") }
+
+val program = for {
+    _ <- ioHello
+    _ <- ioHello
+} yield ()
+```
+]
+
+---
+
+# State management
+
+React is often combined with Redux `redux.js.org`
+
+## Core components
+
+1. Your (changing) state
+2. A set of messages that may come in
+3. **Reducer** fn. `State -> Message -> State` computes the new state given a message 
+
+---
+
+# State management
+
+React is often combined with Redux `redux.js.org`
+
+<img src="images/getting-started-with-redux.png" style="width: 100%;" />
+
+.font50[
+Source: `https://labs.tadigital.com/index.php/2020/04/20/getting-started-with-redux/`
+]
+
+---
+
+# State management
+
+## How do you compute the final state?
+
+1. `initialState :: State`
+2. `reducer :: State -> Message -> State`
+3. `messages :: [Message]` represent the user interaction and come from React
+
+## ⏳ .grey[Time to think!]
+
+---
+
+# State management as a fold
+
+## How do you compute the final state?
+
+1. `initialState :: State`
+2. `reducer :: State -> Message -> State`
+3. `messages :: [Message]` represent the user interaction and come from React
+
+## ⏳ .grey[It's a fold!] (`reduce` in many languages)
+
+```haskell
+foldl reducer initialState messages
+```
+
+---
+
+# State management as a fold
+
+> Event sourcing instead of databases
+
+Databases are mutable and hold only the "current" state of the system
+
+- Hard to distribute maintaining consistency
+- Difficult to analyze after the fact
+
+---
+
+# State management as a fold
+
+> Event sourcing instead of databases
+
+Instead, keep a copy of every **message** (event)
+
+- You can analyze and replay them
+- Messages are easier to distribute
+- The same message can be used by different parts of your system
+
+Apache Kafka is an example of **message broker**
+
+---
+
+# Not only web
+
+The same architecture is now present in every major front-end technology
+
+- React in web
+- Jetpack Compose in Android
+- SwiftUI in Swift
+
+---
+
+class: center, middle, title-slide
+
+# 🪢 Type Classes and <br /> Dependency Injection
+
+---
+
+# Dependency Injection
+
+Imagine you are building a web service <br />
+You usually need access to a lot of things:
+
+- Database connection
+- Serialization to HTML
+- ...
+
+---
+
+# Dependency Injection
+
+Imagine you are building a web service <br />
+You usually need access to a lot of things.
+
+### Simplest solution: parameters!
+
+.code70[
+```haskell
+serveUsers :: Connection -> Serializer -> ...
+           -> Request -> IO Response
+```
+]
+
+- Lots of noise around each function
+- Hard to maintain
+
+---
+
+# Dependency Injection
+
+Imagine you are building a web service <br />
+You usually need access to a lot of things.
+
+### Dependency Injection frameworks
+
+In the 2000s there was a huge boom
+
+- You'll usually define some injection points
+- XML + magic will set the values for you
+
+---
+
+# Dependency Injection
+
+### Haskell's solution: type classes
+
+.code70[
+```haskell
+class Monad m => ProvidesDbConnection m where
+  connect :: m DbConnection
+
+serveUsers
+  :: (ProvidesDbConnection m, Serializer User)
+  => Request -> m Response
+```
+]
+
+- Threaded automatically by type
+- Injecting = defining an instance
+
+---
+
+# Type classes are becoming popular
+
+Scala 3 provides them <br /> (under the name _contextual abstractions_)
+
+.code70[
+```scala
+// here we define a required Config
+def renderWebsite(path: String)(using Config) =
+    "<html>" + renderWidget("cart") + "</html>"
+```
+
+```scala
+// here we declare what should be injected
+given Config = Config(port = 8080)
+// and we can call the function!
+renderWebsite("/home")
+```
+]
+
+---
+
+# Type classes are becoming popular
+
+> Always disguised in other names
+
+- Scala 3: contextual abstractions
+- Swift and Rust: protocols
+- C#: static extension methods
+
+---
+
+# Summary
+
+## 🕺 .grey[Haskell (ideas) are now mainstream!]
+
+.margin-top[
+- ADTs as records + sealed hierarchies
+- Immutability and control of side effects
+- Higher-order functions **everywhere**
+- Data architecture as a big fold
+]
+
+> Learn INFOFP well and profit!
+
+---
+
+class: center, middle, title-slide
+
+# 🤩 It's been a pleasure
+
+## Success with your exams!
+
+    </textarea>
+    <script src="https://remarkjs.com/downloads/remark-latest.min.js">
+    </script>
+    <script>
+      var slideshow = remark.create();
+    </script>
+  </body>
+</html>
